@@ -1,0 +1,6 @@
+.ccls-cache/
+__pycache__/
+intermediates/
+TestOutputDir/
+Win64/
+compile_commands.json
