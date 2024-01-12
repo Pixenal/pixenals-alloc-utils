@@ -2,5 +2,6 @@
 __pycache__/
 intermediates/
 TestOutputDir/
+Documentation/
 Win64/
 compile_commands.json
