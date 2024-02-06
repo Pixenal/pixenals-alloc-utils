@@ -1,6 +1,7 @@
 .ccls-cache/
 __pycache__/
-intermediates/
+Build/
+*.ppm
 TestOutputDir/
 Documentation/
 Win64/
