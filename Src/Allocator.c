@@ -15,4 +15,5 @@ void ruvmAllocatorSetDefault(RuvmAllocator *pAlloc) {
 	pAlloc->pMalloc = malloc;
 	pAlloc->pCalloc = calloc;
 	pAlloc->pFree = free;
+	pAlloc->pRealloc = realloc;
 }
