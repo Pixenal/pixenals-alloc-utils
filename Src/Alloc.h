@@ -2,5 +2,5 @@
 #include <stddef.h>
 #include <RUVM.h>
 
-void ruvmAllocatorSetCustom(RuvmAllocator *pAlloc, RuvmAllocator *pAllocator);
-void ruvmAllocatorSetDefault(RuvmAllocator *pAlloc);
+void ruvmAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc);
+void ruvmAllocSetDefault(RuvmAlloc *pAlloc);
