@@ -4,9 +4,10 @@
 
 #include <Alloc.h>
 #include <Context.h>
+#include <Error.h>
 
 void ruvmAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc) {
-	assert(pAlloc && pCustomAlloc);
+	RUVM_ASSERT("", pAlloc && pCustomAlloc);
 	if (!pCustomAlloc->pMalloc || !pCustomAlloc->pCalloc || !pCustomAlloc->pFree) {
 		printf("Failed to set custom alloc. One or more functions were NULL");
 		return;
@@ -15,7 +16,7 @@ void ruvmAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc) {
 }
 
 void ruvmAllocSetDefault(RuvmAlloc *pAlloc) {
-	assert(pAlloc);
+	RUVM_ASSERT("", pAlloc);
 	pAlloc->pMalloc = malloc;
 	pAlloc->pCalloc = calloc;
 	pAlloc->pFree = free;
