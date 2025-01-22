@@ -1,6 +1,6 @@
 #pragma once
 #include <stddef.h>
-#include <RUVM.h>
+#include <UvStucco.h>
 
-void uvsAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc);
-void uvsAllocSetDefault(RuvmAlloc *pAlloc);
+void stucAllocSetCustom(StucAlloc *pAlloc, StucAlloc *pCustomAlloc);
+void stucAllocSetDefault(StucAlloc *pAlloc);
