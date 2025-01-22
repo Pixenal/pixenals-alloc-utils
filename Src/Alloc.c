@@ -6,7 +6,7 @@
 #include <Context.h>
 #include <Error.h>
 
-void ruvmAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc) {
+void uvsAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc) {
 	RUVM_ASSERT("", pAlloc && pCustomAlloc);
 	if (!pCustomAlloc->pMalloc || !pCustomAlloc->pCalloc || !pCustomAlloc->pFree) {
 		printf("Failed to set custom alloc. One or more functions were NULL");
@@ -15,7 +15,7 @@ void ruvmAllocSetCustom(RuvmAlloc *pAlloc, RuvmAlloc *pCustomAlloc) {
 	*pAlloc = *pCustomAlloc;
 }
 
-void ruvmAllocSetDefault(RuvmAlloc *pAlloc) {
+void uvsAllocSetDefault(RuvmAlloc *pAlloc) {
 	RUVM_ASSERT("", pAlloc);
 	pAlloc->pMalloc = malloc;
 	pAlloc->pCalloc = calloc;
