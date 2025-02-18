@@ -26,8 +26,8 @@ void stucAllocSetDefault(StucAlloc *pAlloc) {
 
 StucResult stucLinAllocInit(const StucAlloc *pAlloc, void **ppHandle, I32 size, I32 initLen) {
 	StucResult err = STUC_SUCCESS;
-	STUC_THROW_IF(err, pAlloc && ppHandle, "", 0);
-	STUC_THROW_IF(err, size > 0 && initLen > 0, "", 0);
+	STUC_ASSERT("", pAlloc && ppHandle);
+	STUC_ASSERT("", size > 0 && initLen > 0);
 	LinAllocState *pState = pAlloc->pCalloc(1, sizeof(LinAllocState));
 	pState->alloc = *pAlloc;
 	pState->blockArrSize = 1;
@@ -44,12 +44,11 @@ StucResult stucLinAllocInit(const StucAlloc *pAlloc, void **ppHandle, I32 size, 
 static
 StucResult incrementBlock(LinAllocState *pState) {
 	StucResult err = STUC_SUCCESS;
-	STUC_THROW_IF(
-		err,
+	STUC_ASSERT(
+		"",
 		pState->blockIdx < pState->blockArrSize &&
 		pState->blockIdx < pState->blockCount &&
-		pState->blockCount <= pState->blockArrSize,
-		"", 0
+		pState->blockCount <= pState->blockArrSize
 	);
 	pState->blockIdx++;
 	pState->idx = 0;
@@ -73,13 +72,13 @@ StucResult incrementBlock(LinAllocState *pState) {
 
 StucResult stucLinAlloc(void *pHandle, void **ppData, I32 len) {
 	StucResult err = STUC_SUCCESS;
-	STUC_THROW_IF(err, pHandle && ppData, "", 0);
+	STUC_ASSERT("", pHandle && ppData);
 	LinAllocState *pState = pHandle;
 	if (pState->idx == pState->blockSize ||
 	    pState->idx + len > pState->blockSize) {
 
 		err = incrementBlock(pState);
-		STUC_THROW_IF(err, true, "", 0);
+		STUC_THROW_IFNOT(err, "", 0);
 	}
 	*ppData = (U8 *)pState->ppBlockArr[pState->blockIdx] + pState->idx * pState->typeSize;
 	pState->idx += len;
@@ -89,9 +88,9 @@ StucResult stucLinAlloc(void *pHandle, void **ppData, I32 len) {
 
 StucResult stucLinAllocClear(void *pHandle, bool setToZero) {
 	StucResult err = STUC_SUCCESS;
-	STUC_THROW_IF(err, pHandle, "", 0);
+	STUC_ASSERT("", pHandle);
 	LinAllocState *pState = pHandle;
-	STUC_THROW_IF(err, pState->ppBlockArr, "", 0);
+	STUC_ASSERT("", pState->ppBlockArr);
 	if (!pState->blockIdx && !pState->idx) {
 		return err;
 	}
@@ -114,13 +113,12 @@ StucResult stucLinAllocClear(void *pHandle, bool setToZero) {
 
 StucResult stucLinAllocDestroy(void *pHandle) {
 	StucResult err = STUC_SUCCESS;
-	STUC_THROW_IF(err, pHandle, "", 0);
+	STUC_ASSERT("", pHandle);
 	LinAllocState *pState = pHandle;
-	STUC_THROW_IF(err, pState->ppBlockArr, "", 0);
-	STUC_THROW_IF(
-		err,
-		pState->blockCount >= 0 && pState->blockCount <= pState->blockArrSize,
-		"", 0
+	STUC_ASSERT("", pState->ppBlockArr);
+	STUC_ASSERT(
+		"",
+		pState->blockCount >= 0 && pState->blockCount <= pState->blockArrSize
 	);
 	for (I32 i = 0; i < pState->blockCount; ++i) {
 		pState->alloc.pFree(pState->ppBlockArr[i]);
