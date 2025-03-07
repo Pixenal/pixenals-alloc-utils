@@ -1,7 +1,8 @@
 #pragma once
 #include <stddef.h>
-#include <UvStucco.h>
-#include <Types.h>
+
+#include <uv_stucco.h>
+#include <types.h>
 
 typedef struct {
 	StucAlloc alloc;

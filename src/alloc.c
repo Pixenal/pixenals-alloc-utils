@@ -3,9 +3,9 @@
 #include <assert.h>
 #include <string.h>
 
-#include <Alloc.h>
-#include <Context.h>
-#include <Error.h>
+#include <alloc.h>
+#include <context.h>
+#include <error.h>
 
 void stucAllocSetCustom(StucAlloc *pAlloc, StucAlloc *pCustomAlloc) {
 	STUC_ASSERT("", pAlloc && pCustomAlloc);
