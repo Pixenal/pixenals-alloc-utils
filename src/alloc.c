@@ -25,7 +25,6 @@ void stucAllocSetDefault(StucAlloc *pAlloc) {
 }
 
 StucResult stucLinAllocInit(const StucAlloc *pAlloc, void **ppHandle, I32 size, I32 initLen) {
-	StucResult err = STUC_SUCCESS;
 	STUC_ASSERT("", pAlloc && ppHandle);
 	STUC_ASSERT("", size > 0 && initLen > 0);
 	LinAllocState *pState = pAlloc->pCalloc(1, sizeof(LinAllocState));
@@ -37,8 +36,7 @@ StucResult stucLinAllocInit(const StucAlloc *pAlloc, void **ppHandle, I32 size, 
 	pState->ppBlockArr = pAlloc->pMalloc(pState->blockArrSize * sizeof(void *));
 	pState->ppBlockArr[0] = pAlloc->pCalloc(initLen, size);
 	*ppHandle = pState;
-	STUC_CATCH(0, err, ;);
-	return err;
+	return STUC_SUCCESS;
 }
 
 static
