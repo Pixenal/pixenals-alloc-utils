@@ -55,7 +55,7 @@ void stucLinAllocDestroy(LinAlloc *pHandle);
 void *stucLinAllocIdx(LinAlloc *pHandle, I32 idx);
 const void *stucLinAllocIdxConst(const LinAlloc *pState, I32 idx);
 
-inline
+static inline
 I32 stucLinAllocGetCount(const LinAlloc *pHandle) {
 	STUC_ASSERT(
 		"",
@@ -70,14 +70,14 @@ I32 stucLinAllocGetCount(const LinAlloc *pHandle) {
 
 void stucLinAllocIterInit(LinAlloc *pState, Range range, LinAllocIter *pIter);
 
-inline
+static inline
 bool stucLinAllocIterAtEnd(const LinAllocIter *pIter) {
 	return
 		pIter->count >= pIter->rangeSize ||
 		pIter->block > pIter->pState->blockIdx;
 }
 
-inline
+static inline
 void stucLinAllocIterInc(LinAllocIter *pIter) {
 	STUC_ASSERT(
 		"",
@@ -93,7 +93,7 @@ void stucLinAllocIterInc(LinAllocIter *pIter) {
 	pIter->count++;
 }
 
-inline
+static inline
 void *stucLinAllocGetItem(const LinAllocIter *pIter) {
 	STUC_ASSERT(
 		"",
