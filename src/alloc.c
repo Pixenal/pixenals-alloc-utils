@@ -61,8 +61,7 @@ void incrementBlock(LinAlloc *pState, I32 requiredLen) {
 		pState->blockIdx < pState->blockCount &&
 		pState->blockCount <= pState->blockArrSize
 	);
-	LinAllocBlock *pOldBlock = pState->pBlockArr + pState->blockIdx;
-	pOldBlock->lessThan = pState->linIdx;
+	pState->pBlockArr[pState->blockIdx].lessThan = pState->linIdx;
 	pState->blockIdx++;
 	if (pState->blockIdx == pState->blockArrSize) {
 		pState->blockArrSize *= 2;
@@ -75,7 +74,8 @@ void incrementBlock(LinAlloc *pState, I32 requiredLen) {
 		return; //this block was already alloc'ed (blocks were cleared)
 	}
 	LinAllocBlock *pNewBlock = pState->pBlockArr + pState->blockIdx;
-	*pNewBlock = (LinAllocBlock) {.size = (pOldBlock->size + requiredLen) * 2};
+	I32 oldSize = pState->pBlockArr[pState->blockIdx - 1].size;
+	*pNewBlock = (LinAllocBlock) {.size = (oldSize + requiredLen) * 2};
 	pNewBlock->pData = pState->alloc.fpCalloc(pNewBlock->size, pState->typeSize);
 	pState->blockCount++;
 }
