@@ -29,6 +29,12 @@ typedef struct LinAlloc {
 	bool valid;
 } LinAlloc;
 
+typedef struct LinAllocArr {
+	LinAlloc *pArr;
+	I32 size;
+	I32 count;
+} LinAllocArr;
+
 typedef struct LinAllocIter {
 	const LinAlloc *pState;
 	Range range;
