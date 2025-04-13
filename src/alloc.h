@@ -80,7 +80,9 @@ static inline
 bool stucLinAllocIterAtEnd(const LinAllocIter *pIter) {
 	return
 		pIter->count >= pIter->rangeSize ||
-		pIter->block > pIter->pState->blockIdx;
+		pIter->block > pIter->pState->blockIdx ||
+		!pIter->pState->blockCount ||
+		pIter->idx >= pIter->pState->pBlockArr[pIter->block].count;
 }
 
 static inline
