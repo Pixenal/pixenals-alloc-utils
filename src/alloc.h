@@ -54,6 +54,7 @@ void stucLinAllocInit(
 	I32 initLen,
 	bool zeroOnClear
 );
+//if len > 1, the returned array will be contiguous
 I32 stucLinAlloc(LinAlloc *pHandle, void **ppData, I32 len);
 void stucLinAllocClear(LinAlloc *pHandle);
 void stucLinAllocDestroy(LinAlloc *pHandle);
