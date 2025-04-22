@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 #include <assert.h>
 #include <string.h>
 
-#include <alloc.h>
+#include <pixenals_alloc_utils.h>
 
 typedef int8_t I8;
 typedef int16_t I16;

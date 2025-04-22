@@ -6,8 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 #pragma once
 #include <stddef.h>
 
-#include "pixenals_types.h"
-#include "error.h"
+#include "../../pixenals-types/include/pixenals_types.h"
+#include "../../pixenals-error-utils/include/pixenals_error_utils.h"
 
 typedef struct PixalcFPtrs {
 	void *(*fpMalloc)(size_t);
