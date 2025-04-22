@@ -6,79 +6,113 @@ SPDX-License-Identifier: Apache-2.0
 #pragma once
 #include <stddef.h>
 
-#include <uv_stucco.h>
-#include <types.h>
-#include <error.h>
+#include "pixenals_types.h"
+#include "error.h"
 
-typedef struct LinAllocBlock {
+typedef struct PixalcFPtrs {
+	void *(*fpMalloc)(size_t);
+	void *(*fpCalloc)(size_t, size_t);
+	void (*fpFree)(void *);
+	void *(*fpRealloc)(void *, size_t);
+} PixalcFPtrs;
+
+typedef struct PixalcLinAllocBlock {
 	void *pData;
-	I32 size;
-	I32 count;
-	I32 lessThan;
-} LinAllocBlock;
+	int32_t size;
+	int32_t count;
+	int32_t lessThan;
+} PixalcLinAllocBlock;
 
-typedef struct LinAlloc {
-	LinAllocBlock *pBlockArr;
-	StucAlloc alloc;
-	I32 blockIdx;
-	I32 blockCount;
-	I32 blockArrSize;
-	I32 typeSize;
-	I32 linIdx;
+typedef struct PixalcLinAlloc {
+	PixalcLinAllocBlock *pBlockArr;
+	PixalcFPtrs alloc;
+	int32_t blockIdx;
+	int32_t blockCount;
+	int32_t blockArrSize;
+	int32_t typeSize;
+	int32_t linIdx;
 	bool zeroOnClear;
 	bool valid;
-} LinAlloc;
+} PixalcLinAlloc;
 
-typedef struct LinAllocArr {
-	LinAlloc *pArr;
-	I32 size;
-	I32 count;
-} LinAllocArr;
+typedef struct PixalcLinAllocArr {
+	PixalcLinAlloc *pArr;
+	int32_t size;
+	int32_t count;
+} PixalcLinAllocArr;
 
-typedef struct LinAllocIter {
-	const LinAlloc *pState;
-	Range range;
-	I32 rangeSize;
-	I32 count;
-	I32 block;
-	I32 idx;
-} LinAllocIter;
+typedef struct PixalcLinAllocIter {
+	const PixalcLinAlloc *pState;
+	PixtyRange range;
+	int32_t rangeSize;
+	int32_t count;
+	int32_t block;
+	int32_t idx;
+} PixalcLinAllocIter;
 
-void stucAllocSetCustom(StucAlloc *pAlloc, StucAlloc *pCustomAlloc);
-void stucAllocSetDefault(StucAlloc *pAlloc);
+#define PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize)\
+	PIX_ERR_ASSERT("", newSize > 0);\
+	if (!(pDynArr)->size) {\
+		PIX_ERR_ASSERT("", !(pDynArr)->pArr);\
+		(pDynArr)->size = newSize;\
+		(pDynArr)->pArr = (pAlloc)->fpMalloc((pDynArr)->size * sizeof(t));\
+	}\
+	else if (newSize >= (pDynArr)->size) {\
+		(pDynArr)->size *= 2;\
+		if (newSize > (pDynArr)->size) {\
+			(pDynArr)->size = newSize;\
+		}\
+		(pDynArr)->pArr =\
+			(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * sizeof(t));\
+	}
 
-void stucLinAllocInit(
-	const StucAlloc *pAlloc,
-	LinAlloc *pHandle,
-	I32 size,
-	I32 initLen,
+#define PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx)\
+	PIX_ERR_ASSERT("", (pDynArr)->count <= (pDynArr)->size);\
+	if (!(pDynArr)->size) {\
+		PIX_ERR_ASSERT("", !(pDynArr)->pArr);\
+		(pDynArr)->size = 4;\
+		(pDynArr)->pArr = (pAlloc)->fpMalloc((pDynArr)->size * sizeof(t));\
+	}\
+	else if ((pDynArr)->count == (pDynArr)->size) {\
+		(pDynArr)->size *= 2;\
+		(pDynArr)->pArr =\
+			(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * sizeof(t));\
+	}\
+	newIdx = (pDynArr)->count;\
+	(pDynArr)->count++;
+
+void pixalcLinAllocInit(
+	const PixalcFPtrs *pAlloc,
+	PixalcLinAlloc *pHandle,
+	int32_t size,
+	int32_t initLen,
 	bool zeroOnClear
 );
 //if len > 1, the returned array will be contiguous
-I32 stucLinAlloc(LinAlloc *pHandle, void **ppData, I32 len);
-void stucLinAllocClear(LinAlloc *pHandle);
-void stucLinAllocDestroy(LinAlloc *pHandle);
+int32_t pixalcLinAlloc(PixalcLinAlloc *pHandle, void **ppData, int32_t len);
+void pixalcLinAllocClear(PixalcLinAlloc *pHandle);
+void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle);
 
-void *stucLinAllocIdx(LinAlloc *pHandle, I32 idx);
-const void *stucLinAllocIdxConst(const LinAlloc *pState, I32 idx);
+void *pixalcLinAllocIdx(PixalcLinAlloc *pHandle, int32_t idx);
+const void *pixalcLinAllocIdxConst(const PixalcLinAlloc *pState, int32_t idx);
 
 static inline
-I32 stucLinAllocGetCount(const LinAlloc *pHandle) {
-	STUC_ASSERT(
+int32_t pixalcLinAllocGetCount(const PixalcLinAlloc *pHandle) {
+	PIX_ERR_ASSERT(
 		"",
 		pHandle->valid && pHandle->pBlockArr != NULL
 	);
-	I32 total = 0;
-	for (I32 i = 0; i <= pHandle->blockIdx; ++i) {
+	int32_t total = 0;
+	for (int32_t i = 0; i <= pHandle->blockIdx; ++i) {
 		total += pHandle->pBlockArr[i].count;
 	}
 	return total;
 }
 
-void stucLinAllocIterInit(LinAlloc *pState, Range range, LinAllocIter *pIter);
+void pixalcLinAllocIterInit(PixalcLinAlloc *pState, PixtyRange range, PixalcLinAllocIter *pIter);
 
 static inline
-bool stucLinAllocIterAtEnd(const LinAllocIter *pIter) {
+bool pixalcLinAllocIterAtEnd(const PixalcLinAllocIter *pIter) {
 	return
 		pIter->count >= pIter->rangeSize ||
 		pIter->block > pIter->pState->blockIdx ||
@@ -87,13 +121,13 @@ bool stucLinAllocIterAtEnd(const LinAllocIter *pIter) {
 }
 
 static inline
-void stucLinAllocIterInc(LinAllocIter *pIter) {
-	STUC_ASSERT(
+void pixalcLinAllocIterInc(PixalcLinAllocIter *pIter) {
+	PIX_ERR_ASSERT(
 		"",
 		pIter->block <= pIter->pState->blockIdx &&
 		pIter->idx < pIter->pState->pBlockArr[pIter->block].count
 	);
-	const LinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
+	const PixalcLinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
 	pIter->idx++;
 	if (pIter->idx == pBlock->count) {
 		pIter->block++;
@@ -103,12 +137,12 @@ void stucLinAllocIterInc(LinAllocIter *pIter) {
 }
 
 static inline
-void *stucLinAllocGetItem(const LinAllocIter *pIter) {
-	STUC_ASSERT(
+void *pixalcLinAllocGetItem(const PixalcLinAllocIter *pIter) {
+	PIX_ERR_ASSERT(
 		"",
 		pIter->block <= pIter->pState->blockIdx &&
 		pIter->idx < pIter->pState->pBlockArr[pIter->block].count
 	);
-	const LinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
-	return (U8 *)pBlock->pData + pIter->idx * pIter->pState->typeSize;
+	const PixalcLinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
+	return (uint8_t *)pBlock->pData + pIter->idx * pIter->pState->typeSize;
 }
