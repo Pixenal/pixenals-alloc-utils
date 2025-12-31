@@ -9,6 +9,9 @@ SPDX-License-Identifier: Apache-2.0
 #include "../../pixenals-types/include/pixenals_types.h"
 #include "../../pixenals-error-utils/include/pixenals_error_utils.h"
 
+typedef uint8_t U8;
+typedef int32_t I32;
+
 typedef struct PixalcFPtrs {
 	void *(*fpMalloc)(size_t);
 	void *(*fpCalloc)(size_t, size_t);
@@ -18,36 +21,48 @@ typedef struct PixalcFPtrs {
 
 typedef struct PixalcLinAllocBlock {
 	void *pData;
-	int32_t size;
-	int32_t count;
-	int32_t lessThan;
+	I32 size;
+	I32 count;
+	I32 lessThan;
 } PixalcLinAllocBlock;
+
+typedef struct PixalcRegion {
+	I32 idx;
+	I32 len;
+} PixalcRegion;
+
+typedef struct PixalcRegionArr {
+	PixalcRegion *pArr;
+	I32 size;
+	I32 count;
+} PixalcRegionArr;
 
 typedef struct PixalcLinAlloc {
 	PixalcLinAllocBlock *pBlockArr;
+	PixalcRegionArr freed;
 	PixalcFPtrs alloc;
-	int32_t blockIdx;
-	int32_t blockCount;
-	int32_t blockArrSize;
-	int32_t typeSize;
-	int32_t linIdx;
+	I32 blockIdx;
+	I32 blockCount;
+	I32 blockArrSize;
+	I32 typeSize;
+	I32 linIdx;
 	bool zeroOnClear;
 	bool valid;
 } PixalcLinAlloc;
 
 typedef struct PixalcLinAllocArr {
 	PixalcLinAlloc *pArr;
-	int32_t size;
-	int32_t count;
+	I32 size;
+	I32 count;
 } PixalcLinAllocArr;
 
 typedef struct PixalcLinAllocIter {
 	const PixalcLinAlloc *pState;
 	PixtyRange range;
-	int32_t rangeSize;
-	int32_t count;
-	int32_t block;
-	int32_t idx;
+	I32 rangeSize;
+	I32 count;
+	I32 block;
+	I32 idx;
 } PixalcLinAllocIter;
 
 #define PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize)\
@@ -84,32 +99,37 @@ typedef struct PixalcLinAllocIter {
 void pixalcLinAllocInit(
 	const PixalcFPtrs *pAlloc,
 	PixalcLinAlloc *pHandle,
-	int32_t size,
-	int32_t initLen,
+	I32 size,
+	I32 initLen,
 	bool zeroOnClear
 );
 //if len > 1, the returned array will be contiguous
-int32_t pixalcLinAlloc(PixalcLinAlloc *pHandle, void **ppData, int32_t len);
+I32 pixalcLinAlloc(PixalcLinAlloc *pHandle, void **ppData, I32 len);
 void pixalcLinAllocClear(PixalcLinAlloc *pHandle);
 void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle);
 
-void *pixalcLinAllocIdx(PixalcLinAlloc *pHandle, int32_t idx);
-const void *pixalcLinAllocIdxConst(const PixalcLinAlloc *pState, int32_t idx);
+void *pixalcLinAllocIdx(PixalcLinAlloc *pHandle, I32 idx);
+const void *pixalcLinAllocIdxConst(const PixalcLinAlloc *pState, I32 idx);
 
 static inline
-int32_t pixalcLinAllocGetCount(const PixalcLinAlloc *pHandle) {
+I32 pixalcLinAllocGetCount(const PixalcLinAlloc *pHandle) {
 	PIX_ERR_ASSERT(
 		"",
 		pHandle->valid && pHandle->pBlockArr != NULL
 	);
-	int32_t total = 0;
-	for (int32_t i = 0; i <= pHandle->blockIdx; ++i) {
+	I32 total = 0;
+	for (I32 i = 0; i <= pHandle->blockIdx; ++i) {
 		total += pHandle->pBlockArr[i].count;
 	}
 	return total;
 }
 
+//note, freed regions will be included in iteration.
+//so if pixalcLinAllocRegionFree has been called prior, make sure to check validity when
+//iterating (regions are zero'd on clear).
 void pixalcLinAllocIterInit(PixalcLinAlloc *pState, PixtyRange range, PixalcLinAllocIter *pIter);
+
+void pixalcLinAllocRegionClear(PixalcLinAlloc *pState, void *pStart, I32 len);
 
 static inline
 bool pixalcLinAllocIterAtEnd(const PixalcLinAllocIter *pIter) {
@@ -144,5 +164,5 @@ void *pixalcLinAllocGetItem(const PixalcLinAllocIter *pIter) {
 		pIter->idx < pIter->pState->pBlockArr[pIter->block].count
 	);
 	const PixalcLinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
-	return (uint8_t *)pBlock->pData + pIter->idx * pIter->pState->typeSize;
+	return (U8 *)pBlock->pData + pIter->idx * pIter->pState->typeSize;
 }

@@ -12,10 +12,8 @@ SPDX-License-Identifier: Apache-2.0
 
 typedef int8_t I8;
 typedef int16_t I16;
-typedef int32_t I32;
 typedef int64_t I64;
 
-typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
 typedef uint64_t U64;
@@ -72,52 +70,6 @@ void incrementBlock(PixalcLinAlloc *pState, I32 requiredLen) {
 	pState->blockCount++;
 }
 
-I32 pixalcLinAlloc(PixalcLinAlloc *pState, void **ppData, I32 len) {
-	PIX_ERR_ASSERT("", pState && ppData);
-	PixalcLinAllocBlock *pBlock = pState->pBlockArr + pState->blockIdx;
-	if (pBlock->count == pBlock->size || pBlock->count + len > pBlock->size) {
-		incrementBlock(pState, len);
-		pBlock = pState->pBlockArr + pState->blockIdx;
-	}
-	*ppData = (U8 *)pBlock->pData + pBlock->count * pState->typeSize;
-	I32 retIdx = pState->linIdx;
-	pBlock->count += len;
-	pState->linIdx += len;
-	return retIdx;
-}
-
-void pixalcLinAllocClear(PixalcLinAlloc *pState) {
-	PIX_ERR_ASSERT("", pState);
-	PIX_ERR_ASSERT("", pState->pBlockArr);
-	if (!pState->blockIdx && !pState->pBlockArr[0].count) {
-		return;
-	}
-	for (I32 i = pState->blockIdx; i >= 0; --i) {
-		PixalcLinAllocBlock *pBlock = pState->pBlockArr + i;
-		if (pState->zeroOnClear) {
-			memset(pBlock->pData, 0, pBlock->count * pState->typeSize);
-		}
-		pBlock->count = 0;
-		pBlock->lessThan = 0;
-	}
-	pState->blockIdx = 0;
-	pState->linIdx = 0;
-}
-
-void pixalcLinAllocDestroy(PixalcLinAlloc *pState) {
-	PIX_ERR_ASSERT("", pState);
-	PIX_ERR_ASSERT("", pState->pBlockArr);
-	PIX_ERR_ASSERT(
-		"",
-		pState->blockCount >= 0 && pState->blockCount <= pState->blockArrSize
-	);
-	for (I32 i = 0; i < pState->blockCount; ++i) {
-		pState->alloc.fpFree(pState->pBlockArr[i].pData);
-	}
-	pState->alloc.fpFree(pState->pBlockArr);
-	*pState = (PixalcLinAlloc) {0};
-}
-
 //binary search through blocks
 static
 I32 getBlockFromIdx(const PixalcLinAlloc *pState, I32 idx) {
@@ -147,6 +99,94 @@ I32 getIdxInBlock(const PixalcLinAlloc *pState, I32 block, I32 idx) {
 	}
 }
 
+static
+I32 checkForFreed(PixalcLinAlloc *pState, void **ppData, I32 len) {
+	if (pState->freed.count) {
+		PIX_ERR_ASSERT("", pState->freed.pArr);
+		//TODO replace freed arr with a binary tree,
+		//this'll allow not just faster search, but the ability to check
+		//for overlap in RegionClear
+		for (I32 i = 0; i < pState->freed.count; ++i) {
+			PixalcRegion *pRegion = pState->freed.pArr + i;
+			if (len <= pRegion->len) {
+				I32 blockIdx = getBlockFromIdx(pState, pRegion->idx);
+				PixalcLinAllocBlock *pBlock = pState->pBlockArr + blockIdx;
+				I32 idxInBlock = getIdxInBlock(pState, blockIdx, pRegion->idx);
+				*ppData = (U8 *)pBlock->pData + idxInBlock * pState->typeSize;
+				I32 retIdx = pRegion->idx;
+				if (i != pState->freed.count - 1) {
+					memmove(
+						pRegion,
+						pRegion + 1,
+						sizeof(PixalcRegion) * (pState->freed.count - i - 1)
+					);
+				}
+				--pState->freed.count;
+				return retIdx;
+			}
+		}
+	}
+	return -1;
+}
+
+I32 pixalcLinAlloc(PixalcLinAlloc *pState, void **ppData, I32 len) {
+	PIX_ERR_ASSERT("", pState && ppData);
+	*ppData = NULL;
+	I32 retIdx = checkForFreed(pState, ppData, len);
+	PIX_ERR_ASSERT("", !(retIdx != -1 ^ !!*ppData))
+	if (*ppData) {
+		return retIdx;
+	}
+	PixalcLinAllocBlock *pBlock = pState->pBlockArr + pState->blockIdx;
+	if (pBlock->count == pBlock->size || pBlock->count + len > pBlock->size) {
+		incrementBlock(pState, len);
+		pBlock = pState->pBlockArr + pState->blockIdx;
+	}
+	*ppData = (U8 *)pBlock->pData + pBlock->count * pState->typeSize;
+	retIdx = pState->linIdx;
+	pBlock->count += len;
+	pState->linIdx += len;
+	return retIdx;
+}
+
+void pixalcLinAllocClear(PixalcLinAlloc *pState) {
+	PIX_ERR_ASSERT("", pState);
+	PIX_ERR_ASSERT("", pState->pBlockArr);
+	if (!pState->blockIdx && !pState->pBlockArr[0].count) {
+		return;
+	}
+	for (I32 i = pState->blockIdx; i >= 0; --i) {
+		PixalcLinAllocBlock *pBlock = pState->pBlockArr + i;
+		if (pState->zeroOnClear) {
+			memset(pBlock->pData, 0, pBlock->count * pState->typeSize);
+		}
+		pBlock->count = 0;
+		pBlock->lessThan = 0;
+	}
+	if (pState->freed.count) {
+		pState->freed.count = 0;
+	}
+	pState->blockIdx = 0;
+	pState->linIdx = 0;
+}
+
+void pixalcLinAllocDestroy(PixalcLinAlloc *pState) {
+	PIX_ERR_ASSERT("", pState);
+	PIX_ERR_ASSERT("", pState->pBlockArr);
+	PIX_ERR_ASSERT(
+		"",
+		pState->blockCount >= 0 && pState->blockCount <= pState->blockArrSize
+	);
+	for (I32 i = 0; i < pState->blockCount; ++i) {
+		pState->alloc.fpFree(pState->pBlockArr[i].pData);
+	}
+	if (pState->freed.pArr) {
+		pState->alloc.fpFree(pState->freed.pArr);
+	}
+	pState->alloc.fpFree(pState->pBlockArr);
+	*pState = (PixalcLinAlloc) {0};
+}
+
 void *pixalcLinAllocIdx(PixalcLinAlloc *pState, I32 idx) {
 	PIX_ERR_ASSERT("", pState && pState->valid);
 	PIX_ERR_ASSERT("out of range", idx >= 0 && idx < pState->linIdx);
@@ -173,4 +213,37 @@ void pixalcLinAllocIterInit(PixalcLinAlloc *pState, PixtyRange range, PixalcLinA
 		.idx = idxInBlock,
 		.count = 0
 	};
+}
+
+void pixalcLinAllocRegionClear(PixalcLinAlloc *pState, void *pStart, I32 len) {
+	PIX_ERR_ASSERT("", pState && pStart && len > 0);
+	I32 linIdx = 0;
+	for (I32 i = 0; i < pState->blockCount; ++i) {
+		const PixalcLinAllocBlock *pBlock = pState->pBlockArr + i;
+		if (pStart < pBlock->pData) {
+			linIdx += pBlock->count;
+			continue;
+		}
+		intptr_t offset = (intptr_t)pStart - (intptr_t)pBlock->pData;
+		offset /= pState->typeSize;
+		if (offset >= pBlock->count) {
+			continue;
+		}
+		PIX_ERR_ASSERT(
+			"specificed address isn't aligned with type",
+			(U8 *)pBlock->pData + offset * pState->typeSize == pStart
+		);
+		PIX_ERR_ASSERT(
+			"specified region length is invalid",
+			offset + len <= pBlock->count
+		);
+		linIdx += offset;
+		I32 freedIdx = 0;
+		PIXALC_DYN_ARR_ADD(PixalcRegion, &pState->alloc, &pState->freed, freedIdx);
+		pState->freed.pArr[freedIdx].idx = linIdx;
+		pState->freed.pArr[freedIdx].len = len;
+		memset(pStart, 0, len * pState->typeSize);
+		return;
+	}
+	PIX_ERR_ASSERT("specified address is invalid", false);
 }
