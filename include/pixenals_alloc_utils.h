@@ -81,20 +81,23 @@ typedef struct PixalcLinAllocIter {
 			(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * sizeof(t));\
 	}
 
-#define PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx)\
+#define PIXALC_DYN_ARR_ADD_ALT(tSize, pAlloc, pDynArr, newIdx)\
 	PIX_ERR_ASSERT("", (pDynArr)->count <= (pDynArr)->size);\
 	if (!(pDynArr)->size) {\
 		PIX_ERR_ASSERT("", !(pDynArr)->pArr);\
 		(pDynArr)->size = 4;\
-		(pDynArr)->pArr = (pAlloc)->fpMalloc((pDynArr)->size * sizeof(t));\
+		(pDynArr)->pArr = (pAlloc)->fpMalloc((pDynArr)->size * tSize);\
 	}\
 	else if ((pDynArr)->count == (pDynArr)->size) {\
 		(pDynArr)->size *= 2;\
 		(pDynArr)->pArr =\
-			(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * sizeof(t));\
+			(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * tSize);\
 	}\
 	newIdx = (pDynArr)->count;\
 	(pDynArr)->count++;
+
+#define PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx)\
+	PIXALC_DYN_ARR_ADD_ALT(sizeof(t), pAlloc, pDynArr, newIdx);
 
 void pixalcLinAllocInit(
 	const PixalcFPtrs *pAlloc,
