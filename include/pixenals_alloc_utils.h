@@ -99,17 +99,102 @@ typedef struct PixalcLinAllocIter {
 #define PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx)\
 	PIXALC_DYN_ARR_ADD_ALT(sizeof(t), pAlloc, pDynArr, newIdx);
 
+static inline
 void pixalcLinAllocInit(
 	const PixalcFPtrs *pAlloc,
 	PixalcLinAlloc *pHandle,
 	I32 size,
 	I32 initLen,
 	bool zeroOnClear
-);
+) {
+	PIX_ERR_ASSERT("", pAlloc && pHandle);
+	PIX_ERR_ASSERT("", size > 0 && initLen > 0);
+	*pHandle = (PixalcLinAlloc){
+		.alloc = *pAlloc,
+		.blockArrSize = 1,
+		.blockCount = 1,
+		.zeroOnClear = zeroOnClear,
+		.typeSize = size,
+		.valid = true
+	};
+	pHandle->pBlockArr = pAlloc->fpMalloc(pHandle->blockArrSize * sizeof(PixalcLinAllocBlock));
+	pHandle->pBlockArr[0] = (PixalcLinAllocBlock) {
+		.size = initLen,
+		.pData = pAlloc->fpCalloc(initLen, size)
+	};
+}
+
+I32 pixalcLinAllocCheckForFreed(PixalcLinAlloc *pHandle, void **ppData, I32 len);
+
+static inline
+void pixalcLinAllocBlockInc(PixalcLinAlloc *pHandle, I32 requiredLen) {
+	PIX_ERR_ASSERT(
+		"",
+		pHandle->blockIdx >= 0 &&
+		pHandle->blockIdx < pHandle->blockArrSize &&
+		pHandle->blockIdx < pHandle->blockCount &&
+		pHandle->blockCount <= pHandle->blockArrSize
+	);
+	pHandle->pBlockArr[pHandle->blockIdx].lessThan = pHandle->linIdx;
+	pHandle->blockIdx++;
+	if (pHandle->blockIdx == pHandle->blockArrSize) {
+		pHandle->blockArrSize *= 2;
+		pHandle->pBlockArr = pHandle->alloc.fpRealloc(
+			pHandle->pBlockArr,
+			pHandle->blockArrSize * sizeof(PixalcLinAllocBlock)
+		);
+	}
+	else if (pHandle->blockIdx != pHandle->blockCount) {
+		return; //this block was already alloc'ed (blocks were cleared)
+	}
+	PixalcLinAllocBlock *pNewBlock = pHandle->pBlockArr + pHandle->blockIdx;
+	I32 oldSize = pHandle->pBlockArr[pHandle->blockIdx - 1].size;
+	*pNewBlock = (PixalcLinAllocBlock) {.size = (oldSize + requiredLen) * 2};
+	pNewBlock->pData = pHandle->alloc.fpCalloc(pNewBlock->size, pHandle->typeSize);
+	pHandle->blockCount++;
+}
+
 //if len > 1, the returned array will be contiguous
-I32 pixalcLinAlloc(PixalcLinAlloc *pHandle, void **ppData, I32 len);
+static inline
+I32 pixalcLinAlloc(PixalcLinAlloc *pHandle, void **ppData, I32 len) {
+	PIX_ERR_ASSERT("", pHandle && ppData);
+	*ppData = NULL;
+	I32 retIdx = pixalcLinAllocCheckForFreed(pHandle, ppData, len);
+	PIX_ERR_ASSERT("", !(retIdx != -1 ^ !!*ppData))
+	if (*ppData) {
+		return retIdx;
+	}
+	PixalcLinAllocBlock *pBlock = pHandle->pBlockArr + pHandle->blockIdx;
+	if (pBlock->count == pBlock->size || pBlock->count + len > pBlock->size) {
+		pixalcLinAllocBlockInc(pHandle, len);
+		pBlock = pHandle->pBlockArr + pHandle->blockIdx;
+	}
+	*ppData = (U8 *)pBlock->pData + pBlock->count * pHandle->typeSize;
+	retIdx = pHandle->linIdx;
+	pBlock->count += len;
+	pHandle->linIdx += len;
+	return retIdx;
+}
+
 void pixalcLinAllocClear(PixalcLinAlloc *pHandle);
-void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle);
+
+static inline
+void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle) {
+	PIX_ERR_ASSERT("", pHandle);
+	PIX_ERR_ASSERT("", pHandle->pBlockArr);
+	PIX_ERR_ASSERT(
+		"",
+		pHandle->blockCount >= 0 && pHandle->blockCount <= pHandle->blockArrSize
+	);
+	for (I32 i = 0; i < pHandle->blockCount; ++i) {
+		pHandle->alloc.fpFree(pHandle->pBlockArr[i].pData);
+	}
+	if (pHandle->freed.pArr) {
+		pHandle->alloc.fpFree(pHandle->freed.pArr);
+	}
+	pHandle->alloc.fpFree(pHandle->pBlockArr);
+	*pHandle = (PixalcLinAlloc) {0};
+}
 
 void *pixalcLinAllocIdx(PixalcLinAlloc *pHandle, I32 idx);
 const void *pixalcLinAllocIdxConst(const PixalcLinAlloc *pState, I32 idx);

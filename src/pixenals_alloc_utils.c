@@ -18,58 +18,6 @@ typedef uint16_t U16;
 typedef uint32_t U32;
 typedef uint64_t U64;
 
-void pixalcLinAllocInit(
-	const PixalcFPtrs *pAlloc,
-	PixalcLinAlloc *pState,
-	I32 size,
-	I32 initLen,
-	bool zeroOnClear
-) {
-	PIX_ERR_ASSERT("", pAlloc && pState);
-	PIX_ERR_ASSERT("", size > 0 && initLen > 0);
-	*pState = (PixalcLinAlloc){
-		.alloc = *pAlloc,
-		.blockArrSize = 1,
-		.blockCount = 1,
-		.zeroOnClear = zeroOnClear,
-		.typeSize = size,
-		.valid = true
-	};
-	pState->pBlockArr = pAlloc->fpMalloc(pState->blockArrSize * sizeof(PixalcLinAllocBlock));
-	pState->pBlockArr[0] = (PixalcLinAllocBlock) {
-		.size = initLen,
-		.pData = pAlloc->fpCalloc(initLen, size)
-	};
-}
-
-static
-void incrementBlock(PixalcLinAlloc *pState, I32 requiredLen) {
-	PIX_ERR_ASSERT(
-		"",
-		pState->blockIdx >= 0 &&
-		pState->blockIdx < pState->blockArrSize &&
-		pState->blockIdx < pState->blockCount &&
-		pState->blockCount <= pState->blockArrSize
-	);
-	pState->pBlockArr[pState->blockIdx].lessThan = pState->linIdx;
-	pState->blockIdx++;
-	if (pState->blockIdx == pState->blockArrSize) {
-		pState->blockArrSize *= 2;
-		pState->pBlockArr = pState->alloc.fpRealloc(
-			pState->pBlockArr,
-			pState->blockArrSize * sizeof(PixalcLinAllocBlock)
-		);
-	}
-	else if (pState->blockIdx != pState->blockCount) {
-		return; //this block was already alloc'ed (blocks were cleared)
-	}
-	PixalcLinAllocBlock *pNewBlock = pState->pBlockArr + pState->blockIdx;
-	I32 oldSize = pState->pBlockArr[pState->blockIdx - 1].size;
-	*pNewBlock = (PixalcLinAllocBlock) {.size = (oldSize + requiredLen) * 2};
-	pNewBlock->pData = pState->alloc.fpCalloc(pNewBlock->size, pState->typeSize);
-	pState->blockCount++;
-}
-
 //binary search through blocks
 static
 I32 getBlockFromIdx(const PixalcLinAlloc *pState, I32 idx) {
@@ -99,8 +47,7 @@ I32 getIdxInBlock(const PixalcLinAlloc *pState, I32 block, I32 idx) {
 	}
 }
 
-static
-I32 checkForFreed(PixalcLinAlloc *pState, void **ppData, I32 len) {
+I32 pixalcLinAllocCheckForFreed(PixalcLinAlloc *pState, void **ppData, I32 len) {
 	if (pState->freed.count) {
 		PIX_ERR_ASSERT("", pState->freed.pArr);
 		//TODO replace freed arr with a binary tree,
@@ -129,26 +76,6 @@ I32 checkForFreed(PixalcLinAlloc *pState, void **ppData, I32 len) {
 	return -1;
 }
 
-I32 pixalcLinAlloc(PixalcLinAlloc *pState, void **ppData, I32 len) {
-	PIX_ERR_ASSERT("", pState && ppData);
-	*ppData = NULL;
-	I32 retIdx = checkForFreed(pState, ppData, len);
-	PIX_ERR_ASSERT("", !(retIdx != -1 ^ !!*ppData))
-	if (*ppData) {
-		return retIdx;
-	}
-	PixalcLinAllocBlock *pBlock = pState->pBlockArr + pState->blockIdx;
-	if (pBlock->count == pBlock->size || pBlock->count + len > pBlock->size) {
-		incrementBlock(pState, len);
-		pBlock = pState->pBlockArr + pState->blockIdx;
-	}
-	*ppData = (U8 *)pBlock->pData + pBlock->count * pState->typeSize;
-	retIdx = pState->linIdx;
-	pBlock->count += len;
-	pState->linIdx += len;
-	return retIdx;
-}
-
 void pixalcLinAllocClear(PixalcLinAlloc *pState) {
 	PIX_ERR_ASSERT("", pState);
 	PIX_ERR_ASSERT("", pState->pBlockArr);
@@ -168,23 +95,6 @@ void pixalcLinAllocClear(PixalcLinAlloc *pState) {
 	}
 	pState->blockIdx = 0;
 	pState->linIdx = 0;
-}
-
-void pixalcLinAllocDestroy(PixalcLinAlloc *pState) {
-	PIX_ERR_ASSERT("", pState);
-	PIX_ERR_ASSERT("", pState->pBlockArr);
-	PIX_ERR_ASSERT(
-		"",
-		pState->blockCount >= 0 && pState->blockCount <= pState->blockArrSize
-	);
-	for (I32 i = 0; i < pState->blockCount; ++i) {
-		pState->alloc.fpFree(pState->pBlockArr[i].pData);
-	}
-	if (pState->freed.pArr) {
-		pState->alloc.fpFree(pState->freed.pArr);
-	}
-	pState->alloc.fpFree(pState->pBlockArr);
-	*pState = (PixalcLinAlloc) {0};
 }
 
 void *pixalcLinAllocIdx(PixalcLinAlloc *pState, I32 idx) {
