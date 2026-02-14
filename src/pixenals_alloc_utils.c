@@ -82,11 +82,16 @@ void pixalcLinAllocClear(PixalcLinAlloc *pState) {
 	if (!pState->blockIdx && !pState->pBlockArr[0].count) {
 		return;
 	}
+	if (pState->zeroOnClear) {
+		//only clear the first block here, subsequent blocks are cleared on inc
+		memset(
+			pState->pBlockArr[0].pData,
+			0,
+			pState->pBlockArr[0].count * pState->typeSize
+		);
+	}
 	for (I32 i = pState->blockIdx; i >= 0; --i) {
 		PixalcLinAllocBlock *pBlock = pState->pBlockArr + i;
-		if (pState->zeroOnClear) {
-			memset(pBlock->pData, 0, pBlock->count * pState->typeSize);
-		}
 		pBlock->count = 0;
 		pBlock->lessThan = 0;
 	}

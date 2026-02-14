@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <stddef.h>
+#include <string.h>
 
 #include "../../pixenals-types/include/pixenals_types.h"
 #include "../../pixenals-error-utils/include/pixenals_error_utils.h"
@@ -130,13 +131,19 @@ static inline
 void pixalcLinAllocBlockInc(PixalcLinAlloc *pHandle, I32 requiredLen) {
 	PIX_ERR_ASSERT(
 		"",
+		requiredLen > 0 &&
 		pHandle->blockIdx >= 0 &&
 		pHandle->blockIdx < pHandle->blockArrSize &&
 		pHandle->blockIdx < pHandle->blockCount &&
 		pHandle->blockCount <= pHandle->blockArrSize
 	);
-	pHandle->pBlockArr[pHandle->blockIdx].lessThan = pHandle->linIdx;
-	pHandle->blockIdx++;
+	bool incd = false;
+	if (pHandle->pBlockArr[pHandle->blockIdx].count) {
+		//current block contains data, so increment
+		pHandle->pBlockArr[pHandle->blockIdx].lessThan = pHandle->linIdx;
+		pHandle->blockIdx++;
+		incd = true;
+	}
 	if (pHandle->blockIdx == pHandle->blockArrSize) {
 		pHandle->blockArrSize *= 2;
 		pHandle->pBlockArr = pHandle->alloc.fpRealloc(
@@ -145,11 +152,35 @@ void pixalcLinAllocBlockInc(PixalcLinAlloc *pHandle, I32 requiredLen) {
 		);
 	}
 	else if (pHandle->blockIdx != pHandle->blockCount) {
-		return; //this block was already alloc'ed (blocks were cleared)
+		//this block was already alloc'ed (first block, or blocks were cleared)
+		PIX_ERR_ASSERT("invalid state", !(!pHandle->linIdx ^ !pHandle->blockIdx));
+		PixalcLinAllocBlock *pBlock = pHandle->pBlockArr + pHandle->blockIdx;
+		I32 prevSize = pHandle->blockIdx ?
+			pHandle->pBlockArr[pHandle->blockIdx - 1].size : 0;
+		bool zero = false;
+		if (pBlock->size < prevSize + requiredLen) {
+			pBlock->size = prevSize + requiredLen;
+			pBlock->pData = pHandle->alloc.fpRealloc(
+				pBlock->pData,
+				pHandle->typeSize * pBlock->size
+			);
+			zero = true;
+		}
+		else {
+			PIX_ERR_ASSERT(
+				"didn't inc block and didn't realloc?",
+				incd
+			);
+		}
+		//block[0] is already memset on clear
+		if (zero || pHandle->zeroOnClear && pHandle->blockIdx) {
+			memset(pBlock->pData, 0, pHandle->typeSize * pBlock->size);
+		}
+		return; 
 	}
 	PixalcLinAllocBlock *pNewBlock = pHandle->pBlockArr + pHandle->blockIdx;
-	I32 oldSize = pHandle->pBlockArr[pHandle->blockIdx - 1].size;
-	*pNewBlock = (PixalcLinAllocBlock) {.size = (oldSize + requiredLen) * 2};
+	I32 prevSize = pHandle->pBlockArr[pHandle->blockIdx - 1].size;
+	*pNewBlock = (PixalcLinAllocBlock) {.size = (prevSize + requiredLen) * 2};
 	pNewBlock->pData = pHandle->alloc.fpCalloc(pNewBlock->size, pHandle->typeSize);
 	pHandle->blockCount++;
 }
