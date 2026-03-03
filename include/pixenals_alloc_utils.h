@@ -191,7 +191,7 @@ I32 pixalcLinAlloc(PixalcLinAlloc *pHandle, void **ppData, I32 len) {
 	PIX_ERR_ASSERT("", pHandle && ppData);
 	*ppData = NULL;
 	I32 retIdx = pixalcLinAllocCheckForFreed(pHandle, ppData, len);
-	PIX_ERR_ASSERT("", !(retIdx != -1 ^ !!*ppData))
+	PIX_ERR_ASSERT("", !((retIdx != -1) ^ !!*ppData))
 	if (*ppData) {
 		return retIdx;
 	}

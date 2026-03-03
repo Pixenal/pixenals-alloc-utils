@@ -152,7 +152,7 @@ void pixalcLinAllocRegionClear(PixalcLinAlloc *pState, void *pStart, I32 len) {
 			"specified region length is invalid",
 			offset + len <= pBlock->count
 		);
-		linIdx += offset;
+		linIdx += (I32)offset;
 		I32 freedIdx = 0;
 		PIXALC_DYN_ARR_ADD(PixalcRegion, &pState->alloc, &pState->freed, freedIdx);
 		pState->freed.pArr[freedIdx].idx = linIdx;
