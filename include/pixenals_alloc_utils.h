@@ -73,7 +73,7 @@ typedef struct PixalcLinAllocIter {
 		(pDynArr)->size = newSize;\
 		(pDynArr)->pArr = (pAlloc)->fpMalloc((pDynArr)->size * sizeof(t));\
 	}\
-	else if (newSize >= (pDynArr)->size) {\
+	else if (newSize > (pDynArr)->size) {\
 		(pDynArr)->size *= 2;\
 		if (newSize > (pDynArr)->size) {\
 			(pDynArr)->size = newSize;\
