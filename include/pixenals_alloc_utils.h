@@ -230,17 +230,20 @@ void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle) {
 void *pixalcLinAllocIdx(PixalcLinAlloc *pHandle, I32 idx);
 const void *pixalcLinAllocIdxConst(const PixalcLinAlloc *pState, I32 idx);
 
+//note: this does not account for deallocs/ reallocs
 static inline
 I32 pixalcLinAllocGetCount(const PixalcLinAlloc *pHandle) {
 	PIX_ERR_ASSERT(
 		"",
 		pHandle->valid && pHandle->pBlockArr != NULL
 	);
+	/*
 	I32 total = 0;
 	for (I32 i = 0; i <= pHandle->blockIdx; ++i) {
 		total += pHandle->pBlockArr[i].count;
 	}
-	return total;
+	*/
+	return pHandle->linIdx;
 }
 
 //note, freed regions will be included in iteration.
