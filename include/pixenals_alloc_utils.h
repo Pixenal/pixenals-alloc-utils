@@ -41,7 +41,7 @@ typedef struct PixalcRegionArr {
 typedef struct PixalcLinAlloc {
 	PixalcLinAllocBlock *pBlockArr;
 	PixalcRegionArr freed;
-	PixalcFPtrs alloc;
+	const PixalcFPtrs *pAlloc;
 	I32 blockIdx;
 	I32 blockCount;
 	I32 blockArrSize;
@@ -111,7 +111,7 @@ void pixalcLinAllocInit(
 	PIX_ERR_ASSERT("", pAlloc && pHandle);
 	PIX_ERR_ASSERT("", size > 0 && initLen > 0);
 	*pHandle = (PixalcLinAlloc){
-		.alloc = *pAlloc,
+		.pAlloc = pAlloc,
 		.blockArrSize = 1,
 		.blockCount = 1,
 		.zeroOnClear = zeroOnClear,
@@ -146,7 +146,7 @@ void pixalcLinAllocBlockInc(PixalcLinAlloc *pHandle, I32 requiredLen) {
 	}
 	if (pHandle->blockIdx == pHandle->blockArrSize) {
 		pHandle->blockArrSize *= 2;
-		pHandle->pBlockArr = pHandle->alloc.fpRealloc(
+		pHandle->pBlockArr = pHandle->pAlloc->fpRealloc(
 			pHandle->pBlockArr,
 			pHandle->blockArrSize * sizeof(PixalcLinAllocBlock)
 		);
@@ -160,7 +160,7 @@ void pixalcLinAllocBlockInc(PixalcLinAlloc *pHandle, I32 requiredLen) {
 		bool zero = false;
 		if (pBlock->size < prevSize + requiredLen) {
 			pBlock->size = prevSize + requiredLen;
-			pBlock->pData = pHandle->alloc.fpRealloc(
+			pBlock->pData = pHandle->pAlloc->fpRealloc(
 				pBlock->pData,
 				pHandle->typeSize * pBlock->size
 			);
@@ -181,7 +181,7 @@ void pixalcLinAllocBlockInc(PixalcLinAlloc *pHandle, I32 requiredLen) {
 	PixalcLinAllocBlock *pNewBlock = pHandle->pBlockArr + pHandle->blockIdx;
 	I32 prevSize = pHandle->pBlockArr[pHandle->blockIdx - 1].size;
 	*pNewBlock = (PixalcLinAllocBlock) {.size = (prevSize + requiredLen) * 2};
-	pNewBlock->pData = pHandle->alloc.fpCalloc(pNewBlock->size, pHandle->typeSize);
+	pNewBlock->pData = pHandle->pAlloc->fpCalloc(pNewBlock->size, pHandle->typeSize);
 	pHandle->blockCount++;
 }
 
@@ -218,12 +218,12 @@ void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle) {
 		pHandle->blockCount >= 0 && pHandle->blockCount <= pHandle->blockArrSize
 	);
 	for (I32 i = 0; i < pHandle->blockCount; ++i) {
-		pHandle->alloc.fpFree(pHandle->pBlockArr[i].pData);
+		pHandle->pAlloc->fpFree(pHandle->pBlockArr[i].pData);
 	}
 	if (pHandle->freed.pArr) {
-		pHandle->alloc.fpFree(pHandle->freed.pArr);
+		pHandle->pAlloc->fpFree(pHandle->freed.pArr);
 	}
-	pHandle->alloc.fpFree(pHandle->pBlockArr);
+	pHandle->pAlloc->fpFree(pHandle->pBlockArr);
 	*pHandle = (PixalcLinAlloc) {0};
 }
 

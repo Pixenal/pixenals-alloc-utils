@@ -154,7 +154,7 @@ void pixalcLinAllocRegionClear(PixalcLinAlloc *pState, void *pStart, I32 len) {
 		);
 		linIdx += (I32)offset;
 		I32 freedIdx = 0;
-		PIXALC_DYN_ARR_ADD(PixalcRegion, &pState->alloc, &pState->freed, freedIdx);
+		PIXALC_DYN_ARR_ADD(PixalcRegion, pState->pAlloc, &pState->freed, freedIdx);
 		pState->freed.pArr[freedIdx].idx = linIdx;
 		pState->freed.pArr[freedIdx].len = len;
 		memset(pStart, 0, len * pState->typeSize);
