@@ -4,8 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 */
 
 #pragma once
+#ifdef __cplusplus
+#include <cstddef>
+#include <cstring>
+#else
 #include <stddef.h>
 #include <string.h>
+#endif
 
 #include "../../pixenals-types/include/pixenals_types.h"
 #include "../../pixenals-error-utils/include/pixenals_error_utils.h"
@@ -66,6 +71,7 @@ typedef struct PixalcLinAllocIter {
 	I32 idx;
 } PixalcLinAllocIter;
 
+#ifndef __cplusplus
 #define PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize)\
 	PIX_ERR_ASSERT("", newSize > 0);\
 	if (!(pDynArr)->size) {\
@@ -288,3 +294,4 @@ void *pixalcLinAllocGetItem(const PixalcLinAllocIter *pIter) {
 	const PixalcLinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
 	return (U8 *)pBlock->pData + pIter->idx * pIter->pState->typeSize;
 }
+#endif
