@@ -218,7 +218,6 @@ void pixalcLinAllocClear(PixalcLinAlloc *pHandle);
 static inline
 void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle) {
 	PIX_ERR_ASSERT("", pHandle);
-	PIX_ERR_ASSERT("", pHandle->pBlockArr);
 	PIX_ERR_ASSERT(
 		"",
 		pHandle->blockCount >= 0 && pHandle->blockCount <= pHandle->blockArrSize
@@ -229,7 +228,9 @@ void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle) {
 	if (pHandle->freed.pArr) {
 		pHandle->pAlloc->fpFree(pHandle->freed.pArr);
 	}
-	pHandle->pAlloc->fpFree(pHandle->pBlockArr);
+	if (pHandle->pBlockArr) {
+		pHandle->pAlloc->fpFree(pHandle->pBlockArr);
+	}
 	*pHandle = (PixalcLinAlloc) {0};
 }
 
