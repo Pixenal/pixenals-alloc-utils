@@ -73,19 +73,33 @@ typedef struct PixalcLinAllocIter {
 
 #ifndef __cplusplus
 #define PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize)\
-	PIX_ERR_ASSERT("", newSize > 0);\
+	PIX_ERR_ASSERT("", (newSize) > 0);\
 	if (!(pDynArr)->size) {\
 		PIX_ERR_ASSERT("", !(pDynArr)->pArr);\
 		(pDynArr)->size = newSize;\
 		(pDynArr)->pArr = (pAlloc)->fpMalloc((pDynArr)->size * sizeof(t));\
 	}\
-	else if (newSize > (pDynArr)->size) {\
+	else if ((newSize) > (pDynArr)->size) {\
 		(pDynArr)->size *= 2;\
-		if (newSize > (pDynArr)->size) {\
+		if ((newSize) > (pDynArr)->size) {\
 			(pDynArr)->size = newSize;\
 		}\
 		(pDynArr)->pArr =\
 			(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * sizeof(t));\
+	}
+
+#define PIXALC_DYN_ARR_RESIZE_ZERO(t, pAlloc, pDynArr, newSize)\
+	{\
+		I32 pixalcPrevSize = (pDynArr)->size;\
+		PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize);\
+		PIX_ERR_ASSERT("", pixalcPrevSize <= (pDynArr)->size);\
+		if ((pDynArr)->size != pixalcPrevSize) {\
+			memset(\
+				(pDynArr)->pArr + pixalcPrevSize,\
+				0,\
+				sizeof(t) * ((pDynArr)->size - pixalcPrevSize)\
+			);\
+		}\
 	}
 
 #define PIXALC_DYN_ARR_ADD_ALT(tSize, pAlloc, pDynArr, newIdx)\
