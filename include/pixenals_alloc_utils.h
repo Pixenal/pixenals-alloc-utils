@@ -120,6 +120,10 @@ typedef struct PixalcLinAllocIter {
 #define PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx)\
 	PIXALC_DYN_ARR_ADD_ALT(sizeof(t), pAlloc, pDynArr, newIdx);
 
+#define PIXALC_DYN_ARR_ADD_ZERO(t, pAlloc, pDynArr, newIdx)\
+	PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx);\
+	(pDynArr)->pArr[newIdx] = (t){0};
+
 static inline
 void pixalcLinAllocInit(
 	const PixalcFPtrs *pAlloc,
