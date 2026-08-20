@@ -15,6 +15,7 @@ SPDX-License-Identifier: Apache-2.0
 #include "../../pixenals-types/include/pixenals_types.h"
 #include "../../pixenals-error-utils/include/pixenals_error_utils.h"
 
+//TODO remove these typedefs from all lib headers
 typedef uint8_t U8;
 typedef int32_t I32;
 
@@ -312,5 +313,17 @@ void *pixalcLinAllocGetItem(const PixalcLinAllocIter *pIter) {
 	);
 	const PixalcLinAllocBlock *pBlock = pIter->pState->pBlockArr + pIter->block;
 	return (U8 *)pBlock->pData + pIter->idx * pIter->pState->typeSize;
+}
+
+static inline
+bool pixalcMemIsZero(const void *pMem, int64_t bitSize) {
+	int64_t byteSize = bitSize / 8 + !!(bitSize % 8);
+	for (int64_t i = 0; i < byteSize; ++i) {
+		uint8_t mask = i == byteSize - 1 ? 0xff >> 1 - bitSize % 8 : 0xff;
+		if (((const uint8_t *)pMem)[i] & mask) {
+			return false;
+		}
+	}
+	return true;
 }
 #endif
