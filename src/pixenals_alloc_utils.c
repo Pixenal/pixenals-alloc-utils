@@ -111,6 +111,7 @@ void *pixalcLinAllocIdx(PixalcLinAlloc *pState, I32 idx) {
 	return (U8 *)pState->pBlockArr[block].pData + idxInBlock * pState->typeSize;
 }
 
+//TODO use pCtx instead of pState or pHandle
 const void *pixalcLinAllocIdxConst(const PixalcLinAlloc *pState, I32 idx) {
 	return pixalcLinAllocIdx((PixalcLinAlloc *)pState, idx);
 }
