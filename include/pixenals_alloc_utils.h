@@ -68,8 +68,9 @@ typedef struct PixalcLinAllocIter {
 	PixtyRange range;
 	I32 rangeSize;
 	I32 count;
-	I32 block;
 	I32 idx;
+	I32 block : 31;
+	I32 valid : 1;
 } PixalcLinAllocIter;
 
 #define PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize)\

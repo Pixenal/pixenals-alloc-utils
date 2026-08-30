@@ -127,7 +127,8 @@ void pixalcLinAllocIterInit(PixalcLinAlloc *pState, PixtyRange range, PixalcLinA
 		.rangeSize = range.end - range.start,
 		.block = block,
 		.idx = idxInBlock,
-		.count = 0
+		.count = 0,
+		.valid = true
 	};
 }
 
