@@ -73,37 +73,58 @@ typedef struct PixalcLinAllocIter {
 	I32 valid : 1;
 } PixalcLinAllocIter;
 
-#define PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize)\
+
+#define PIXALC_ITEMSIZE(pArr) ((intptr_t)((pArr) + 1) - (intptr_t)(pArr))
+
+#ifndef __cplusplus
+#define PIXALC_DYN_ARR_RESIZE(pAlloc, pDynArr, newSize)\
 	PIX_ERR_ASSERT("", (newSize) > 0);\
 	if (!(pDynArr)->size) {\
 		PIX_ERR_ASSERT("", !(pDynArr)->pArr);\
 		(pDynArr)->size = newSize;\
-		(pDynArr)->pArr = (t *)(pAlloc)->fpMalloc((pDynArr)->size * sizeof(t));\
+		(pDynArr)->pArr = (pAlloc)->fpMalloc(\
+			PIXALC_ITEMSIZE((pDynArr)->pArr) * (intptr_t)(pDynArr)->size\
+		);\
 	}\
 	else if ((newSize) > (pDynArr)->size) {\
 		(pDynArr)->size *= 2;\
 		if ((newSize) > (pDynArr)->size) {\
 			(pDynArr)->size = newSize;\
 		}\
-		(pDynArr)->pArr =\
-			(t *)(pAlloc)->fpRealloc((pDynArr)->pArr, (pDynArr)->size * sizeof(t));\
-	}
+		(pDynArr)->pArr = (pAlloc)->fpRealloc(\
+			(pDynArr)->pArr,\
+			PIXALC_ITEMSIZE((pDynArr)->pArr) * (intptr_t)(pDynArr)->size\
+		);\
+	}\
 
-#define PIXALC_DYN_ARR_RESIZE_ZERO(t, pAlloc, pDynArr, newSize)\
-	{\
+//compiler replacement of malloc+memset with calloc is inconsistent.
+//so manually check, and use calloc if size is 0
+#define PIXALC_DYN_ARR_RESIZE_ZERO(pAlloc, pDynArr, newSize) {\
+	if (!(pDynArr)->size) {\
+		PIX_ERR_ASSERT("array is invalid", !(pDynArr)->pArr);\
+		if ((newSize)) {\
+			PIX_ERR_ASSERT("", (newSize) > 0);\
+			(pDynArr)->size = newSize;\
+			(pDynArr)->pArr =\
+				(pAlloc)->fpCalloc((pDynArr)->size, PIXALC_ITEMSIZE((pDynArr)->pArr));\
+		}\
+	}\
+	else {\
 		I32 pixalcPrevSize = (pDynArr)->size;\
-		PIXALC_DYN_ARR_RESIZE(t, pAlloc, pDynArr, newSize);\
+		PIXALC_DYN_ARR_RESIZE(pAlloc, pDynArr, newSize);\
 		PIX_ERR_ASSERT("", pixalcPrevSize <= (pDynArr)->size);\
 		if ((pDynArr)->size != pixalcPrevSize) {\
+			const intptr_t pixalcSize = PIXALC_ITEMSIZE((pDynArr)->pArr) *\
+				(intptr_t)((pDynArr)->size - pixalcPrevSize);\
 			memset(\
 				(pDynArr)->pArr + pixalcPrevSize,\
 				0,\
-				sizeof(t) * ((pDynArr)->size - pixalcPrevSize)\
+				pixalcSize\
 			);\
 		}\
-	}
+	}\
+}
 
-#ifndef __cplusplus
 #define PIXALC_DYN_ARR_ADD_ALT(tSize, pAlloc, pDynArr, newIdx)\
 	PIX_ERR_ASSERT("", (pDynArr)->count <= (pDynArr)->size);\
 	if (!(pDynArr)->size) {\
@@ -119,19 +140,19 @@ typedef struct PixalcLinAllocIter {
 	newIdx = (pDynArr)->count;\
 	(pDynArr)->count++;
 
-#define PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx)\
-	PIXALC_DYN_ARR_ADD_ALT(sizeof(t), pAlloc, pDynArr, newIdx);
+#define PIXALC_DYN_ARR_ADD(pAlloc, pDynArr, newIdx)\
+	PIXALC_DYN_ARR_ADD_ALT(PIXALC_ITEMSIZE((pDynArr)->pArr), pAlloc, pDynArr, newIdx);
 
-#define PIXALC_DYN_ARR_ADD_ZERO(t, pAlloc, pDynArr, newIdx)\
-	PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx);\
-	(pDynArr)->pArr[newIdx] = (t){0};
+#define PIXALC_DYN_ARR_ADD_ZERO(pAlloc, pDynArr, newIdx)\
+	PIXALC_DYN_ARR_ADD(pAlloc, pDynArr, newIdx);\
+	memset((pDynArr)->pArr + newIdx, 0, PIXALC_ITEMSIZE((pDynArr)->pArr));
 
-#define PIXALC_DYN_ARR_DESTROY(t, pAlloc, pDynArr)\
+#define PIXALC_DYN_ARR_DESTROY(pAlloc, pDynArr)\
 	if ((pDynArr)->pArr) {\
 		PIX_ERR_ASSERT("array is invalid", (pDynArr)->size > 0);\
 		(pAlloc)->fpFree((pDynArr)->pArr);\
 	}\
-	*(pDynArr) = (t){0};
+	memset(pDynArr, 0, PIXALC_ITEMSIZE(pDynArr));
 
 static inline
 void pixalcLinAllocInit(
@@ -252,9 +273,7 @@ void pixalcLinAllocDestroy(PixalcLinAlloc *pHandle) {
 	for (I32 i = 0; i < pHandle->blockCount; ++i) {
 		pHandle->alloc.fpFree(pHandle->pBlockArr[i].pData);
 	}
-	if (pHandle->freed.pArr) {
-		pHandle->alloc.fpFree(pHandle->freed.pArr);
-	}
+	PIXALC_DYN_ARR_DESTROY(&pHandle->alloc, &pHandle->freed);
 	if (pHandle->pBlockArr) {
 		pHandle->alloc.fpFree(pHandle->pBlockArr);
 	}
