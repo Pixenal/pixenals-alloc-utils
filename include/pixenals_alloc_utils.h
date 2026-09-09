@@ -126,6 +126,13 @@ typedef struct PixalcLinAllocIter {
 	PIXALC_DYN_ARR_ADD(t, pAlloc, pDynArr, newIdx);\
 	(pDynArr)->pArr[newIdx] = (t){0};
 
+#define PIXALC_DYN_ARR_DESTROY(t, pAlloc, pDynArr)\
+	if ((pDynArr)->pArr) {\
+		PIX_ERR_ASSERT("array is invalid", (pDynArr)->size > 0);\
+		(pAlloc)->fpFree((pDynArr)->pArr);\
+	}\
+	*(pDynArr) = (t){0};
+
 static inline
 void pixalcLinAllocInit(
 	const PixalcFPtrs *pAlloc,
